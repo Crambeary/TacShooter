@@ -193,6 +193,9 @@ function App() {
   const [totalTargets, setTotalTargets] = useState(0);
   const [targetsHit, setTargetsHit] = useState(0);
 
+  // Ref for muzzle flash mesh
+  const muzzleFlashRef = useRef<BABYLON.Mesh | null>(null);
+
   useEffect(() => {
     if (reactCanvas.current) {
       const engine = new Engine(reactCanvas.current, true);
@@ -209,7 +212,7 @@ function App() {
       camera.applyGravity = true; 
       camera.ellipsoid = new Vector3(0.5, 0.9, 0.5); 
       camera.checkCollisions = true;
-      camera.minZ = 0.2;
+      camera.minZ = 0.05; // Adjusted minZ slightly for weapon model visibility
 
       // Enable WASD movement
       camera.keysUp.push(87);    
@@ -218,6 +221,27 @@ function App() {
       camera.keysRight.push(68); 
       camera.speed = 0.15; 
       camera.angularSensibility = 5000; 
+
+      // --- Weapon Placeholder --- 
+      const weaponPlaceholder = MeshBuilder.CreateBox("weapon", { width: 0.1, height: 0.15, depth: 0.5 }, scene);
+      weaponPlaceholder.material = new StandardMaterial("weaponMat", scene);
+      (weaponPlaceholder.material as StandardMaterial).diffuseColor = Color3.Gray();
+      weaponPlaceholder.parent = camera; // Attach to camera
+      weaponPlaceholder.position = new Vector3(0.2, -0.2, 0.5); // Position relative to camera (right, down, forward)
+      weaponPlaceholder.isPickable = false; // Don't let the weapon block shots
+      // --- End Weapon Placeholder ---
+
+      // --- Muzzle Flash Placeholder ---
+      const muzzleFlash = MeshBuilder.CreatePlane("muzzleFlash", { size: 0.1 }, scene);
+      muzzleFlash.material = new StandardMaterial("flashMat", scene);
+      (muzzleFlash.material as StandardMaterial).diffuseColor = Color3.Yellow();
+      (muzzleFlash.material as StandardMaterial).emissiveColor = Color3.Yellow(); // Make it glow
+      muzzleFlash.parent = weaponPlaceholder; // Attach to weapon
+      muzzleFlash.position = new Vector3(0, 0, 0.26); // Position at the tip of the weapon
+      muzzleFlash.setEnabled(false); // Start disabled
+      muzzleFlash.isPickable = false;
+      muzzleFlashRef.current = muzzleFlash; // Store reference for later use
+      // --- End Muzzle Flash Placeholder ---
 
       // Basic Light
       const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene); 
@@ -296,17 +320,49 @@ function App() {
               }
               
               // --- Proceed with shooting --- 
-              // Shoot a ray from camera
-              const ray = camera.getForwardRay();
 
-              // Optional: Offset the ray origin slightly if needed
-              // const origin = camera.position.add(camera.getDirection(Vector3.Forward()).scale(0.1));
-              // const ray = new Ray(origin, camera.getDirection(Vector3.Forward()), 100); 
+              // Show Muzzle Flash
+              if (muzzleFlashRef.current) {
+                muzzleFlashRef.current.setEnabled(true);
+                setTimeout(() => {
+                  if (muzzleFlashRef.current) {
+                    muzzleFlashRef.current.setEnabled(false);
+                  }
+                }, 60); // Flash duration
+              }
+
+              // Shoot a ray from camera center (more accurate for FPS)
+              const ray = scene.createPickingRay(engine.getRenderWidth() / 2, engine.getRenderHeight() / 2, null, camera);
               
               const pickInfo = scene.pickWithRay(ray);
 
               if (pickInfo?.hit && pickInfo.pickedMesh) {
-                  console.log("Hit:", pickInfo.pickedMesh.name);
+                  console.log("Hit:", pickInfo.pickedMesh.name, "at", pickInfo.pickedPoint);
+
+                  // --- Create Hit Decal Placeholder --- 
+                  const hitNormal = pickInfo.getNormal(true); // Get the normal of the hit surface
+                  if (hitNormal) {
+                    const decalSize = 0.15;
+                    const decal = MeshBuilder.CreatePlane("hitDecal", {size: decalSize}, scene);
+                    decal.material = new StandardMaterial("decalMat", scene);
+                    (decal.material as StandardMaterial).diffuseColor = Color3.Black();
+                    (decal.material as StandardMaterial).alpha = 0.8;
+                    decal.position = pickInfo.pickedPoint.add(hitNormal.scale(0.01)); // Position at hit point + slight offset
+                    
+                    // Basic orientation: align decal's local Z with the inverse hit normal
+                    // This makes the plane face outwards from the surface it hit.
+                    decal.lookAt(pickInfo.pickedPoint.subtract(hitNormal)); 
+                    decal.isPickable = false;
+
+                    // Optional: Parent to hit mesh if it might move (causes issues if parent disposed)
+                    // if (pickInfo.pickedMesh.metadata?.type !== "target") { // Don't parent to disappearing targets
+                    //   decal.setParent(pickInfo.pickedMesh);
+                    // }
+
+                    // Remove decal after a few seconds
+                    setTimeout(() => decal.dispose(), 5000);
+                  }
+                  // --- End Hit Decal Placeholder ---
 
                   // Check if the hit mesh is a target using metadata
                   if (pickInfo.pickedMesh.metadata?.type === "target") {
@@ -315,14 +371,7 @@ function App() {
                       setTargetsHit(prevHits => prevHits + 1);
                       // Optionally destroy the target
                       pickInfo.pickedMesh.dispose(); 
-                  } else {
-                      // Optional: Create a small temporary sphere at the hit point for visual feedback on non-targets
-                      // const impactSphere = MeshBuilder.CreateSphere("impact", { diameter: 0.1 }, scene);
-                      // impactSphere.position = pickInfo.pickedPoint;
-                      // impactSphere.material = new StandardMaterial("impactMat", scene);
-                      // (impactSphere.material as StandardMaterial).diffuseColor = Color3.Yellow();
-                      // setTimeout(() => impactSphere.dispose(), 200); // Remove after a short time
-                  }
+                  } 
               }
               // --- End Proceed with shooting ---
 
@@ -332,7 +381,6 @@ function App() {
           }
         }
       }
-
       scene.onPointerUp = (evt) => {
          if (evt.button === 0) { // Left click
           // Intentionally removed engine.exitPointerlock(); 
