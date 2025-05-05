@@ -91,18 +91,26 @@ function createRoom(name: string, position: Vector3, scene: Scene, doors: { nort
 
     // West Wall (-X)
     if (doors.west) {
-        const wallWestBottom = MeshBuilder.CreateBox(name + "WallWestBottom", { depth: (ROOM_DEPTH - DOOR_WIDTH) / 2, ...sideWallParams }, scene);
+        const wallWestBottom = MeshBuilder.CreateBox(name + "WallWestBottom", { 
+            width: WALL_THICKNESS, 
+            height: ROOM_HEIGHT, 
+            depth: (ROOM_DEPTH - DOOR_WIDTH) / 2 
+        }, scene);
         wallWestBottom.position = position.add(new Vector3(-ROOM_WIDTH / 2, wallY, -(ROOM_DEPTH + DOOR_WIDTH) / 4));
         wallWestBottom.material = roomMat;
         wallWestBottom.checkCollisions = true;
 
-        const wallWestTop = MeshBuilder.CreateBox(name + "WallWestTop", { depth: (ROOM_DEPTH - DOOR_WIDTH) / 2, ...sideWallParams }, scene);
+        const wallWestTop = MeshBuilder.CreateBox(name + "WallWestTop", { 
+            width: WALL_THICKNESS, 
+            height: ROOM_HEIGHT, 
+            depth: (ROOM_DEPTH - DOOR_WIDTH) / 2 
+        }, scene);
         wallWestTop.position = position.add(new Vector3(-ROOM_WIDTH / 2, wallY, (ROOM_DEPTH + DOOR_WIDTH) / 4));
         wallWestTop.material = roomMat;
         wallWestTop.checkCollisions = true;
 
         // Lintel above door
-        const lintelWest = MeshBuilder.CreateBox(name + "LintelWest", { width: WALL_THICKNESS, height: ROOM_HEIGHT - DOOR_HEIGHT, depth: DOOR_WIDTH }, scene);
+        const lintelWest = MeshBuilder.CreateBox(name + "LintelWest", { width: WALL_THICKNESS, height: ROOM_HEIGHT - DOOR_HEIGHT, depth: DOOR_WIDTH }, scene); 
         lintelWest.position = position.add(new Vector3(-ROOM_WIDTH / 2, wallY + DOOR_HEIGHT / 2, 0));
         lintelWest.material = roomMat;
         lintelWest.checkCollisions = true;
@@ -116,18 +124,26 @@ function createRoom(name: string, position: Vector3, scene: Scene, doors: { nort
 
      // East Wall (+X)
     if (doors.east) {
-         const wallEastBottom = MeshBuilder.CreateBox(name + "WallEastBottom", { depth: (ROOM_DEPTH - DOOR_WIDTH) / 2, ...sideWallParams }, scene);
+         const wallEastBottom = MeshBuilder.CreateBox(name + "WallEastBottom", { 
+            width: WALL_THICKNESS, 
+            height: ROOM_HEIGHT, 
+            depth: (ROOM_DEPTH - DOOR_WIDTH) / 2 
+        }, scene);
         wallEastBottom.position = position.add(new Vector3(ROOM_WIDTH / 2, wallY, -(ROOM_DEPTH + DOOR_WIDTH) / 4));
         wallEastBottom.material = roomMat;
         wallEastBottom.checkCollisions = true;
 
-        const wallEastTop = MeshBuilder.CreateBox(name + "WallEastTop", { depth: (ROOM_DEPTH - DOOR_WIDTH) / 2, ...sideWallParams }, scene);
+        const wallEastTop = MeshBuilder.CreateBox(name + "WallEastTop", { 
+            width: WALL_THICKNESS, 
+            height: ROOM_HEIGHT, 
+            depth: (ROOM_DEPTH - DOOR_WIDTH) / 2 
+        }, scene);
         wallEastTop.position = position.add(new Vector3(ROOM_WIDTH / 2, wallY, (ROOM_DEPTH + DOOR_WIDTH) / 4));
         wallEastTop.material = roomMat;
         wallEastTop.checkCollisions = true;
 
         // Lintel above door
-        const lintelEast = MeshBuilder.CreateBox(name + "LintelEast", { width: WALL_THICKNESS, height: ROOM_HEIGHT - DOOR_HEIGHT, depth: DOOR_WIDTH }, scene);
+        const lintelEast = MeshBuilder.CreateBox(name + "LintelEast", { width: WALL_THICKNESS, height: ROOM_HEIGHT - DOOR_HEIGHT, depth: DOOR_WIDTH }, scene); 
         lintelEast.position = position.add(new Vector3(ROOM_WIDTH / 2, wallY + DOOR_HEIGHT / 2, 0));
         lintelEast.material = roomMat;
         lintelEast.checkCollisions = true;
@@ -140,14 +156,14 @@ function createRoom(name: string, position: Vector3, scene: Scene, doors: { nort
 
     // Add Cover Objects
     coverObjects.forEach((cover, index) => {
-        const coverBox = MeshBuilder.CreateBox(name + "Cover" + index, { width: cover.size.x, height: cover.size.y, depth: cover.size.z }, scene);
+        const coverBox = MeshBuilder.CreateBox(name + `Cover${index}`, { width: cover.size.x, height: cover.size.y, depth: cover.size.z }, scene);
         // Position cover relative to room center, adjust Y to sit on floor
         coverBox.position = position.add(cover.position).add(new Vector3(0, -ROOM_HEIGHT / 2 + cover.size.y / 2, 0)); 
         coverBox.material = coverMat;
         coverBox.checkCollisions = true;
     });
-}
 
+}
 
 function App() {
   const reactCanvas = useRef<HTMLCanvasElement>(null);
