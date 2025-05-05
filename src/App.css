@@ -17,4 +17,59 @@ html, body {
   width: 100%;
   height: 100%;
   touch-action: none; /* Prevent default touch actions */
+  /* Ensure canvas doesn't block UI pointer events if UI needs interaction */
+  /* pointer-events: none; /* Might be needed if UI elements need clicks */ 
+}
+
+/* Traditional Crosshair */
+.crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 15px; /* Width of the cross */
+  height: 15px; /* Height of the cross */
+  transform: translate(-50%, -50%);
+  pointer-events: none; /* Don't interfere with canvas clicks */
+}
+
+.crosshair::before, 
+.crosshair::after {
+  content: '';
+  position: absolute;
+  background-color: white;
+}
+
+/* Vertical line */
+.crosshair::before {
+  left: 50%;
+  top: 0;
+  width: 1px; /* Line thickness */
+  height: 100%; /* Line length (same as container height) */
+  transform: translateX(-50%);
+}
+
+/* Horizontal line */
+.crosshair::after {
+  top: 50%;
+  left: 0;
+  width: 100%; /* Line length (same as container width) */
+  height: 1px; /* Line thickness */
+  transform: translateY(-50%);
+}
+
+/* HUD positioning */
+.hud-bottom-left {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  color: white;
+  font-family: sans-serif;
+  font-size: 1.2em;
+  text-shadow: 1px 1px 2px black; /* Improve readability */
+  pointer-events: none; /* Don't interfere with canvas clicks */
+}
+
+/* Style for individual lines in HUD */
+.hud-bottom-left div {
+  margin-bottom: 5px;
 }

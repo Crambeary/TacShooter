@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { Engine, Scene, UniversalCamera, Vector3, HemisphericLight, MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/core';
+import { useEffect, useRef, useState } from 'react';
+import { Engine, Scene, UniversalCamera, Vector3, HemisphericLight, MeshBuilder, StandardMaterial, Color3, Tags } from '@babylonjs/core';
 import './App.css';
 
 // Room dimensions
@@ -181,11 +181,17 @@ function createRoom(name: string, position: Vector3, scene: Scene, doors: { nort
         targetMesh.checkCollisions = true;
         // Add metadata to easily identify targets
         targetMesh.metadata = { type: "target" }; 
+        // Add tag for easy counting
+        Tags.AddTagsTo(targetMesh, "targetTag");
     });
 }
 
 function App() {
   const reactCanvas = useRef<HTMLCanvasElement>(null);
+  // UI State
+  const [ammo, setAmmo] = useState(30); 
+  const [totalTargets, setTotalTargets] = useState(0);
+  const [targetsHit, setTargetsHit] = useState(0);
 
   useEffect(() => {
     if (reactCanvas.current) {
@@ -269,38 +275,60 @@ function App() {
       // Room 4 (Top Right)
       createRoom("Room4", new Vector3(ROOM_WIDTH + WALL_THICKNESS, 0, ROOM_DEPTH + WALL_THICKNESS), scene, { south: true, west: true }, room4Cover, room4Targets);
 
+      // --- Calculate Initial Target Count ---
+      const initialTargets = scene.getMeshesByTags("targetTag");
+      setTotalTargets(initialTargets.length);
+      setTargetsHit(0); // Ensure hit count is reset on setup
+      // --- End Calculate Initial Target Count ---
+
       // Pointer lock and Shooting
       scene.onPointerDown = (evt) => {
         if (evt.button === 0) { // Left click
           if (!engine.isPointerLock) {
             engine.enterPointerlock();
           } else {
-            // Shoot a ray from camera
-            const ray = camera.getForwardRay();
+            // Use functional update to access current ammo state
+            setAmmo(currentAmmo => {
+              // Check for ammo before shooting
+              if (currentAmmo <= 0) {
+                console.log("Out of ammo!");
+                return currentAmmo; // Return current state if no ammo
+              }
+              
+              // --- Proceed with shooting --- 
+              // Shoot a ray from camera
+              const ray = camera.getForwardRay();
 
-            // Optional: Offset the ray origin slightly if needed
-            // const origin = camera.position.add(camera.getDirection(Vector3.Forward()).scale(0.1));
-            // const ray = new Ray(origin, camera.getDirection(Vector3.Forward()), 100); 
-            
-            const pickInfo = scene.pickWithRay(ray);
+              // Optional: Offset the ray origin slightly if needed
+              // const origin = camera.position.add(camera.getDirection(Vector3.Forward()).scale(0.1));
+              // const ray = new Ray(origin, camera.getDirection(Vector3.Forward()), 100); 
+              
+              const pickInfo = scene.pickWithRay(ray);
 
-            if (pickInfo?.hit && pickInfo.pickedMesh) {
-                console.log("Hit:", pickInfo.pickedMesh.name);
+              if (pickInfo?.hit && pickInfo.pickedMesh) {
+                  console.log("Hit:", pickInfo.pickedMesh.name);
 
-                // Check if the hit mesh is a target using metadata
-                if (pickInfo.pickedMesh.metadata?.type === "target") {
-                    console.log("Target Hit!");
-                    // Optionally destroy the target
-                    pickInfo.pickedMesh.dispose(); 
-                } else {
-                    // Optional: Create a small temporary sphere at the hit point for visual feedback on non-targets
-                    // const impactSphere = MeshBuilder.CreateSphere("impact", { diameter: 0.1 }, scene);
-                    // impactSphere.position = pickInfo.pickedPoint;
-                    // impactSphere.material = new StandardMaterial("impactMat", scene);
-                    // (impactSphere.material as StandardMaterial).diffuseColor = Color3.Yellow();
-                    // setTimeout(() => impactSphere.dispose(), 200); // Remove after a short time
-                }
-            }
+                  // Check if the hit mesh is a target using metadata
+                  if (pickInfo.pickedMesh.metadata?.type === "target") {
+                      console.log("Target Hit!");
+                      // Increment hit count
+                      setTargetsHit(prevHits => prevHits + 1);
+                      // Optionally destroy the target
+                      pickInfo.pickedMesh.dispose(); 
+                  } else {
+                      // Optional: Create a small temporary sphere at the hit point for visual feedback on non-targets
+                      // const impactSphere = MeshBuilder.CreateSphere("impact", { diameter: 0.1 }, scene);
+                      // impactSphere.position = pickInfo.pickedPoint;
+                      // impactSphere.material = new StandardMaterial("impactMat", scene);
+                      // (impactSphere.material as StandardMaterial).diffuseColor = Color3.Yellow();
+                      // setTimeout(() => impactSphere.dispose(), 200); // Remove after a short time
+                  }
+              }
+              // --- End Proceed with shooting ---
+
+              // Decrement ammo after successful shot logic
+              return currentAmmo - 1;
+            });
           }
         }
       }
@@ -332,10 +360,20 @@ function App() {
         engine.dispose();
       }
     }
-  }, [reactCanvas]);
+  }, [reactCanvas]); // Removed ammo dependency
+
+  const targetsRemaining = totalTargets - targetsHit;
 
   return (
-    <canvas ref={reactCanvas} id="renderCanvas" />
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}> {/* Added wrapper div for positioning UI */}
+      <canvas ref={reactCanvas} id="renderCanvas" />
+      {/* UI Elements */}
+      <div className="crosshair"></div>
+      <div className="hud-bottom-left">
+        <div>Ammo: {ammo}</div>
+        <div>Targets Remaining: {targetsRemaining} / {totalTargets}</div>
+      </div>
+    </div>
   );
 }
 
