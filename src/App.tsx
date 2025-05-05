@@ -15,8 +15,12 @@ interface CoverObject {
     size: Vector3;
 }
 
+interface Target {
+    position: Vector3;
+}
+
 // Function to create a single room
-function createRoom(name: string, position: Vector3, scene: Scene, doors: { north?: boolean, south?: boolean, east?: boolean, west?: boolean } = {}, coverObjects: CoverObject[] = []) {
+function createRoom(name: string, position: Vector3, scene: Scene, doors: { north?: boolean, south?: boolean, east?: boolean, west?: boolean } = {}, coverObjects: CoverObject[] = [], targets: Target[] = []) {
     const roomMat = new StandardMaterial(name + "Mat", scene);
     roomMat.diffuseColor = new Color3(0.8, 0.8, 0.8); 
     const coverMat = new StandardMaterial(name + "CoverMat", scene);
@@ -156,13 +160,28 @@ function createRoom(name: string, position: Vector3, scene: Scene, doors: { nort
 
     // Add Cover Objects
     coverObjects.forEach((cover, index) => {
-        const coverBox = MeshBuilder.CreateBox(name + `Cover${index}`, { width: cover.size.x, height: cover.size.y, depth: cover.size.z }, scene);
+        const coverBox = MeshBuilder.CreateBox(`${name}Cover${index}`, { width: cover.size.x, height: cover.size.y, depth: cover.size.z }, scene);
         // Position cover relative to room center, adjust Y to sit on floor
-        coverBox.position = position.add(cover.position).add(new Vector3(0, -ROOM_HEIGHT / 2 + cover.size.y / 2, 0)); 
+        const relativePos = position.add(cover.position);
+        coverBox.position = relativePos;
         coverBox.material = coverMat;
         coverBox.checkCollisions = true;
     });
 
+    // Create targets
+    const targetMat = new StandardMaterial(name + "TargetMat", scene);
+    targetMat.diffuseColor = new Color3(1, 0, 0); // Red targets
+
+    targets.forEach((target, index) => {
+        const targetMesh = MeshBuilder.CreateCylinder(`${name}-target-${index}`, { height: 0.8, diameter: 0.5 }, scene);
+        // Position target relative to room center, then add room position
+        const relativePos = position.add(target.position);
+        targetMesh.position = relativePos;
+        targetMesh.material = targetMat;
+        targetMesh.checkCollisions = true;
+        // Add metadata to easily identify targets
+        targetMesh.metadata = { type: "target" }; 
+    });
 }
 
 function App() {
@@ -176,7 +195,6 @@ function App() {
       // Enable collisions and gravity
       scene.gravity = new Vector3(0, -0.9, 0); 
       scene.collisionsEnabled = true;
-
 
       // Position camera inside the first room (Room 1 - bottom left)
       const camera = new UniversalCamera("camera", new Vector3(0, 1.6, 0), scene); 
@@ -199,35 +217,57 @@ function App() {
       const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene); 
       light.intensity = 0.8; 
 
-
-      // Create 2x2 Room Layout
-      const cover1: CoverObject[] = [
-          { position: new Vector3(-ROOM_WIDTH / 4, 0, ROOM_DEPTH / 4), size: new Vector3(1, 1.5, 3) },
-          { position: new Vector3(ROOM_WIDTH / 4, 0, -ROOM_DEPTH / 4), size: new Vector3(2, 1.5, 1) }
-      ];
-      const cover2: CoverObject[] = [
-          { position: new Vector3(0, 0, ROOM_DEPTH / 4), size: new Vector3(3, 1.5, 1) },
-      ];
-      const cover3: CoverObject[] = [
-          { position: new Vector3(ROOM_WIDTH / 4, 0, 0), size: new Vector3(1, 1.5, 2) },
-      ];
-      const cover4: CoverObject[] = [
-          { position: new Vector3(-ROOM_WIDTH / 4, 0, -ROOM_DEPTH / 4), size: new Vector3(1.5, 1.5, 1.5) },
-          { position: new Vector3(ROOM_WIDTH / 4, 0, ROOM_DEPTH / 4), size: new Vector3(1, 1.5, 1) }
+      // Example Cover Objects for Room 1
+      const room1Cover: CoverObject[] = [
+        { position: new Vector3(-3, -ROOM_HEIGHT / 2 + 0.5, 3), size: new Vector3(1, 1, 2) }, // Low cover near west wall
+        { position: new Vector3(3, -ROOM_HEIGHT / 2 + 0.75, -2), size: new Vector3(2, 1.5, 1) } // Taller cover near east wall
       ];
 
-      // Room 1 (Bottom-Left)
-      createRoom("room1", new Vector3(0, 0, 0), scene, { north: true, east: true }, cover1);
-      
-      // Room 2 (Bottom-Right)
-      createRoom("room2", new Vector3(ROOM_WIDTH, 0, 0), scene, { north: true, west: true }, cover2);
+      // Example Targets for Room 1
+      const room1Targets: Target[] = [
+        { position: new Vector3(0, 0, 4) }, // Target against north wall
+        { position: new Vector3(-4, 0, -4) } // Target in SW corner
+      ];
 
-      // Room 3 (Top-Left)
-      createRoom("room3", new Vector3(0, 0, ROOM_DEPTH), scene, { south: true, east: true }, cover3);
+      // Cover and Targets for Room 2 (Top Left)
+      const room2Cover: CoverObject[] = [
+        { position: new Vector3(0, -ROOM_HEIGHT / 2 + 0.75, 3), size: new Vector3(3, 1.5, 1) }, // Wide cover near north wall
+      ];
+      const room2Targets: Target[] = [
+        { position: new Vector3(4, 0, 0) }, // Target on east wall
+      ];
 
-      // Room 4 (Top-Right)
-      createRoom("room4", new Vector3(ROOM_WIDTH, 0, ROOM_DEPTH), scene, { south: true, west: true }, cover4);
+      // Cover and Targets for Room 3 (Bottom Right)
+      const room3Cover: CoverObject[] = [
+        { position: new Vector3(4, -ROOM_HEIGHT / 2 + 0.5, 0), size: new Vector3(1, 1, 2) }, // Cover near east wall center
+      ];
+      const room3Targets: Target[] = [
+        { position: new Vector3(-4, 0, 4) }, // Target in NW corner
+        { position: new Vector3(0, 0, -4) }, // Target on south wall
+      ];
 
+      // Cover and Targets for Room 4 (Top Right)
+      const room4Cover: CoverObject[] = [
+        { position: new Vector3(-3, -ROOM_HEIGHT / 2 + 0.75, -3), size: new Vector3(1.5, 1.5, 1.5) }, // Box cover SW
+        { position: new Vector3(3, -ROOM_HEIGHT / 2 + 0.75, 3), size: new Vector3(1, 1.5, 1) } // Small cover NE
+      ];
+      const room4Targets: Target[] = [
+        { position: new Vector3(0, 0, 0) }, // Target in the center
+      ];
+
+
+      // Create rooms
+      // Room 1 (Bottom Left)
+      createRoom("Room1", new Vector3(0, 0, 0), scene, { north: true, east: true }, room1Cover, room1Targets);
+
+      // Room 2 (Top Left)
+      createRoom("Room2", new Vector3(0, 0, ROOM_DEPTH + WALL_THICKNESS), scene, { south: true, east: true }, room2Cover, room2Targets);
+
+      // Room 3 (Bottom Right)
+      createRoom("Room3", new Vector3(ROOM_WIDTH + WALL_THICKNESS, 0, 0), scene, { north: true, west: true }, room3Cover, room3Targets);
+
+      // Room 4 (Top Right)
+      createRoom("Room4", new Vector3(ROOM_WIDTH + WALL_THICKNESS, 0, ROOM_DEPTH + WALL_THICKNESS), scene, { south: true, west: true }, room4Cover, room4Targets);
 
       // Pointer lock and Shooting
       scene.onPointerDown = (evt) => {
@@ -245,15 +285,21 @@ function App() {
             const pickInfo = scene.pickWithRay(ray);
 
             if (pickInfo?.hit && pickInfo.pickedMesh) {
-              console.log("Hit:", pickInfo.pickedMesh.name);
-              // Later: Check if pickedMesh is an enemy, apply damage, etc.
+                console.log("Hit:", pickInfo.pickedMesh.name);
 
-              // Optional: Create a small temporary sphere at the hit point for visual feedback
-              // const impactSphere = MeshBuilder.CreateSphere("impact", { diameter: 0.1 }, scene);
-              // impactSphere.position = pickInfo.pickedPoint;
-              // impactSphere.material = new StandardMaterial("impactMat", scene);
-              // (impactSphere.material as StandardMaterial).diffuseColor = Color3.Red();
-              // setTimeout(() => impactSphere.dispose(), 200); // Remove after a short time
+                // Check if the hit mesh is a target using metadata
+                if (pickInfo.pickedMesh.metadata?.type === "target") {
+                    console.log("Target Hit!");
+                    // Optionally destroy the target
+                    pickInfo.pickedMesh.dispose(); 
+                } else {
+                    // Optional: Create a small temporary sphere at the hit point for visual feedback on non-targets
+                    // const impactSphere = MeshBuilder.CreateSphere("impact", { diameter: 0.1 }, scene);
+                    // impactSphere.position = pickInfo.pickedPoint;
+                    // impactSphere.material = new StandardMaterial("impactMat", scene);
+                    // (impactSphere.material as StandardMaterial).diffuseColor = Color3.Yellow();
+                    // setTimeout(() => impactSphere.dispose(), 200); // Remove after a short time
+                }
             }
           }
         }
