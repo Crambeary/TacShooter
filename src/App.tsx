@@ -184,7 +184,8 @@ function App() {
       camera.attachControl(reactCanvas.current, true);
       camera.applyGravity = true; 
       camera.ellipsoid = new Vector3(0.5, 0.9, 0.5); 
-      camera.checkCollisions = true; 
+      camera.checkCollisions = true;
+      camera.minZ = 0.2;
 
       // Enable WASD movement
       camera.keysUp.push(87);    
